@@ -1,7 +1,7 @@
 # stupid script to ripoff jruby's wiki from kenai
 # any improvements are more than welcome!
 # btw, currently broken **WIP**
-
+require 'rubygems'
 require 'nokogiri'
 require 'open-uri'
 require 'reverse_markdown'
