@@ -41,19 +41,21 @@ def convert_to_markdown(xhtml)
   r.parse_string(xhtml)
 end
 
+def target(link)
+  target = "#{BASEDIR}/#{link.split("/").last}.markdown"
+end
+
 def convert!
   links = fetch_links
   links.each do |title, link|
-    if title 
+    if title
       url = "#{KENAI_BASE}#{link}"
       puts "#{title}=>#{url}"
       page = convert_to_markdown(fetch_page(url))
-      target = "#{BASEDIR}#{link}.markdown"
-      FileUtils.mkdir_p(File.dirname(target))
-      f = File.new(target, "w+")
+      FileUtils.mkdir_p(File.dirname(target(link)))
+      f = File.new(target(link), "w+")
       f.write(page)
       f.close
-      puts "#{page}"
     end
   end
 end
