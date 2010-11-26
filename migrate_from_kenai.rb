@@ -15,7 +15,9 @@ def fetch_links(url = "#{KENAI_BASE}/projects/jruby/pages/Home")
   doc = Nokogiri::HTML(data)
   pages = {}
   doc.xpath("//a").each do |x|
-    pages.update({x.content => x[:href]}) if x[:href] =~ /jruby\/pages/ 
+    if x[:href] =~ /jruby\/pages/ && !(x[:href] =~ /#/)
+      pages.update({x.content => x[:href]})
+    end
   end
   pages
 end
