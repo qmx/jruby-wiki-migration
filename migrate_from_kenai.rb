@@ -4,59 +4,44 @@
 require 'rubygems'
 require 'nokogiri'
 require 'open-uri'
-require 'reverse_markdown'
 require 'fileutils'
+require 'json'
 
-KENAI_BASE = "http://kenai.com"
+KENAI_BASE = "https://kenai.com/api/projects/jruby/features/wiki/pages.json"
+INPUT = "./in"
 BASEDIR = "./out"
+PANDOC = "$HOME/.cabal/bin/pandoc"
 
-def fetch_links(url = "#{KENAI_BASE}/projects/jruby/pages/Home")
-  data = open(url).read
-  doc = Nokogiri::HTML(data)
-  pages = {}
-  doc.xpath("//a").each do |x|
-    if x[:href] =~ /jruby\/pages/ && !(x[:href] =~ /#/)
-      pages.update({x.content => x[:href]})
+def fetch_pages
+  result = JSON.parse(open(KENAI_BASE).read)
+  loop do
+    result['pages'].each do |page|
+      page_url = page['href']
+      puts page_url
+      page_data = JSON.parse(open(page_url).read)
+      revisions = JSON.parse(open(page_data['revisions_href']).read)
+      loop do
+        revisions['revisions'].each do |page_revision|
+          rev_number = page_revision['number']
+          page_name = page['name']
+          puts "processing page #{page_name}, revision #{rev_number}"
+          current_revision_dir = "#{INPUT}/#{rev_number}"
+          FileUtils.mkdir_p(current_revision_dir)
+          raw_data = open(page_revision['href']).read
+          #parsed_data = JSON.parse(raw_data)
+          #f = File.new("#{current_revision_dir}/#{page_name}.wiki", "w+")
+          #f.write(raw_data['text'])
+          #f.close
+          f_raw = File.new("#{current_revision_dir}/#{page_name}.json", "w+")
+          f_raw.write(raw_data)
+          f_raw.close
+        end
+        revisions = JSON.parse(open(revisions['next']).read) if revisions['next']
+        break unless revisions['next']
+      end
     end
-  end
-  pages
-end
-
-def fetch_page(link)
-  begin
-    data = open(link).read
-    doc = Nokogiri::HTML(data).xpath("//div[@class='wikiMainBody']").first
-  rescue RuntimeError => e
-    doc = ''
-  end
-  if doc.respond_to?(:to_xhtml)
-    doc.to_xhtml
-  else
-    ""
-  end
-end
-
-def convert_to_markdown(xhtml)
-  r = ReverseMarkdown.new
-  r.parse_string(xhtml)
-end
-
-def target(link)
-  target = "#{BASEDIR}/#{link.split("/").last}.markdown"
-end
-
-def convert!
-  links = fetch_links
-  links.each do |title, link|
-    if title
-      url = "#{KENAI_BASE}#{link}"
-      puts "#{title}=>#{url}"
-      page = convert_to_markdown(fetch_page(url))
-      FileUtils.mkdir_p(File.dirname(target(link)))
-      f = File.new(target(link), "w+")
-      f.write(page)
-      f.close
-    end
+    result = JSON.parse(open(result['next']).read) if result['next']
+    break unless result['next']
   end
 end
 
